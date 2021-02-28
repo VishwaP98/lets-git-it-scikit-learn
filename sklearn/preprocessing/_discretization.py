@@ -388,8 +388,3 @@ class KBinsDiscretizer(TransformerMixin, BaseEstimator):
                     A[mapping, j] = aggregate_encoder(col[mapping])
         
         return A
-
-# X = np.arange(30).reshape(-1, 2)
-# # print(X)
-# p = KBinsDiscretizer(n_bins=2, encode='ordinal')
-# print(X)
