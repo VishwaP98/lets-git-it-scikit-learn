@@ -9,6 +9,8 @@
 import numbers
 import numpy as np
 import warnings
+import copy
+from scipy import stats
 
 from . import OneHotEncoder
 
@@ -164,7 +166,7 @@ class KBinsDiscretizer(TransformerMixin, BaseEstimator):
                 f" instead."
             )
 
-        valid_encode = ('onehot', 'onehot-dense', 'ordinal')
+        valid_encode = ('onehot', 'onehot-dense', 'ordinal', 'min', 'max', 'mean', 'median', 'mode')
         if self.encode not in valid_encode:
             raise ValueError("Valid options for 'encode' are {}. "
                              "Got encode={!r} instead."
@@ -303,6 +305,14 @@ class KBinsDiscretizer(TransformerMixin, BaseEstimator):
             Xt[:, jj] = np.digitize(Xt[:, jj] + eps, bin_edges[jj][1:])
         np.clip(Xt, 0, self.n_bins_ - 1, out=Xt)
 
+        if self.encode == 'max':
+            encoder = lambda x: np.max(x)
+            return self._aggregate_encoder_helper(X, encoder)
+
+        if self.encode == 'mode':
+            encoder =  lambda x: stats.mode(x)[0][0]
+            return self._aggregate_encoder_helper(X, encoder)
+
         if self.encode == 'ordinal':
             return Xt
 
@@ -351,3 +361,35 @@ class KBinsDiscretizer(TransformerMixin, BaseEstimator):
             Xinv[:, jj] = bin_centers[np.int_(Xinv[:, jj])]
 
         return Xinv
+
+
+    def _aggregate_encoder_helper(self, X, aggregate_encoder=lambda x: np.min(x)):
+        A = np.array(X)
+
+        ordinal_labels = KBinsDiscretizer(self.n_bins, encode='ordinal').fit_transform(A)
+
+        # traverse columns
+        for j in range(len(A[0])):
+            col = A[:, j]
+
+            # go through each bin to get the entries that match the corresponding label
+            # then perform the encoding operation (min, max, mean, etc.) on just those entries
+            for bin_num in range(self.n_bins):
+                mapping = [] # map for membership in current bin
+                # traverse labels in this column
+                for i in range(len(ordinal_labels[:, j])):
+                    # member
+                    if ordinal_labels[i, j] == bin_num:
+                        mapping.append(True)
+                    # not memeber
+                    else:
+                        mapping.append(False)
+                if len(col[mapping]) > 0:
+                    A[mapping, j] = aggregate_encoder(col[mapping])
+        
+        return A
+
+# X = np.arange(30).reshape(-1, 2)
+# # print(X)
+# p = KBinsDiscretizer(n_bins=2, encode='ordinal')
+# print(X)
