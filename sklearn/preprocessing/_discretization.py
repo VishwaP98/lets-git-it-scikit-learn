@@ -305,13 +305,14 @@ class KBinsDiscretizer(TransformerMixin, BaseEstimator):
             Xt[:, jj] = np.digitize(Xt[:, jj] + eps, bin_edges[jj][1:])
         np.clip(Xt, 0, self.n_bins_ - 1, out=Xt)
 
+
         if self.encode == 'max':
             encoder = lambda x: np.max(x)
-            return self._aggregate_encoder_helper(X, encoder)
+            return self._aggregate_encoder_helper(X, Xt, encoder)
 
         if self.encode == 'mode':
             encoder =  lambda x: stats.mode(x)[0][0]
-            return self._aggregate_encoder_helper(X, encoder)
+            return self._aggregate_encoder_helper(X, Xt, encoder)
 
         if self.encode == 'ordinal':
             return Xt
@@ -363,10 +364,8 @@ class KBinsDiscretizer(TransformerMixin, BaseEstimator):
         return Xinv
 
 
-    def _aggregate_encoder_helper(self, X, aggregate_encoder=lambda x: np.min(x)):
+    def _aggregate_encoder_helper(self, X, ordinal_labels, aggregate_encoder=lambda x: np.min(x)):
         A = np.array(X)
-
-        ordinal_labels = KBinsDiscretizer(self.n_bins, encode='ordinal').fit_transform(A)
 
         # traverse columns
         for j in range(len(A[0])):
