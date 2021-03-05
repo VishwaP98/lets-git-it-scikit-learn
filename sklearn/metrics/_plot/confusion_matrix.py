@@ -84,7 +84,7 @@ class ConfusionMatrixDisplay:
     
     @font_size.setter
     def font_size(self, font_size=10):
-        if(font_size < 0 or not(font_size)):
+        if(not(font_size) or font_size <= 0):
             raise ValueError("Font size below 0 is not possible")
         self._font_size = font_size
 
