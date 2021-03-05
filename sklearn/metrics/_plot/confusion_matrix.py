@@ -84,7 +84,7 @@ class ConfusionMatrixDisplay:
     
     @font_size.setter
     def font_size(self, font_size=10):
-        if(font_size < 0):
+        if(font_size < 0 or not(font_size)):
             raise ValueError("Font size below 0 is not possible")
         self._font_size = font_size
 
@@ -140,6 +140,8 @@ class ConfusionMatrixDisplay:
 
             # print text with appropriate color depending on background
             thresh = (cm.max() + cm.min()) / 2.0
+
+
 
             for i, j in product(range(n_classes), range(n_classes)):
                 color = cmap_max if cm[i, j] < thresh else cmap_min
@@ -463,7 +465,7 @@ def plot_confusion_matrix(estimator, X, y_true, *, labels=None,
                           display_labels=None, include_values=True,
                           xticks_rotation='horizontal',
                           values_format=None,
-                          cmap='viridis', ax=None, colorbar=True,font_size=None):
+                          cmap='viridis', ax=None, colorbar=True,font_size=10):
     """Plot Confusion Matrix.
 
     Read more in the :ref:`User Guide <confusion_matrix>`.
