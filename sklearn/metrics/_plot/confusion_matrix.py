@@ -73,15 +73,20 @@ class ConfusionMatrixDisplay:
     >>> disp.plot() # doctest: +SKIP
     """
     @_deprecate_positional_args
-    def __init__(self, confusion_matrix, *, display_labels=None):
+    def __init__(self, confusion_matrix, *, display_labels=None, font_size=10):
         self.confusion_matrix = confusion_matrix
         self.display_labels = display_labels
-
-    def set_fontsize(self, font_size=None):
         self.font_size = font_size
 
-    def get_fontsize(self):
-        return self.font_size
+    @property
+    def font_size(self):
+        return self._font_size
+    
+    @font_size.setter
+    def font_size(self, font_size=10):
+        if(font_size < 0):
+            raise ValueError("Font size below 0 is not possible")
+        self._font_size = font_size
 
     @_deprecate_positional_args
     def plot(self, *, include_values=True, cmap='viridis',
@@ -148,16 +153,18 @@ class ConfusionMatrixDisplay:
                 else:
                     text_cm = format(cm[i, j], values_format)
 
-                if(self.font_size):
-                    self.text_[i, j] = ax.text(
-                        j, i, text_cm,
-                        ha="center", va="center",
-                        color=color, fontsize=self.font_size)
-                else:
-                    self.text_[i, j] = ax.text(
-                        j, i, text_cm,
-                        ha="center", va="center",
-                        color=color)
+                #set the values of the matrix to the given font size
+                #otherwise, set the values of the matrix to the default font size
+                # if(self.font_size):
+                self.text_[i, j] = ax.text(
+                    j, i, text_cm,
+                    ha="center", va="center",
+                    color=color, fontsize=self._font_size)
+                # else:
+                #     self.text_[i, j] = ax.text(
+                #         j, i, text_cm,
+                #         ha="center", va="center",
+                #         color=color)
 
         if self.display_labels is None:
             display_labels = np.arange(n_classes)
@@ -178,6 +185,9 @@ class ConfusionMatrixDisplay:
         self.figure_ = fig
         self.ax_ = ax
         return self
+    
+    #creating a property object
+    # font_size = property(get_fontsize, set_fontsize)
 
     @classmethod
     def from_estimator(
@@ -565,9 +575,8 @@ def plot_confusion_matrix(estimator, X, y_true, *, labels=None,
             display_labels = labels
 
     disp = ConfusionMatrixDisplay(confusion_matrix=cm,
-                                  display_labels=display_labels)
+                                  display_labels=display_labels,font_size=font_size)
 
-    disp.set_fontsize(font_size)
     return disp.plot(include_values=include_values,
                      cmap=cmap, ax=ax, xticks_rotation=xticks_rotation,
                      values_format=values_format, colorbar=colorbar)
