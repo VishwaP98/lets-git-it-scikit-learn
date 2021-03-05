@@ -364,7 +364,7 @@ class KBinsDiscretizer(TransformerMixin, BaseEstimator):
         return Xinv
 
 
-    def _aggregate_encoder_helper(self, X, ordinal_labels, aggregate_encoder=lambda x: np.min(x)):
+    def _aggregate_encoder_helper(self, X, ordinal_labels, aggregate_encoder):
         A = np.array(X)
 
         # traverse columns
