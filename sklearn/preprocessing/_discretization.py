@@ -383,7 +383,10 @@ class KBinsDiscretizer(TransformerMixin, BaseEstimator):
                     # not memeber
                     else:
                         mapping.append(False)
+                
+                # if the bin has more than one element
                 if len(col[mapping]) > 0:
+                    # apply aggregate encoding on the list of elements in the bin
                     A[mapping, j] = aggregate_encoder(col[mapping])
         
         return A
