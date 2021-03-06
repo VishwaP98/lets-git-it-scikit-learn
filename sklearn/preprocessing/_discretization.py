@@ -374,16 +374,9 @@ class KBinsDiscretizer(TransformerMixin, BaseEstimator):
             # go through each bin to get the entries that match the corresponding label
             # then perform the encoding operation (min, max, mean, etc.) on just those entries
             for bin_num in range(self.n_bins):
-                mapping = [] # map for membership in current bin
-                # traverse labels in this column
-                for i in range(len(ordinal_labels[:, j])):
-                    # member
-                    if ordinal_labels[i, j] == bin_num:
-                        mapping.append(True)
-                    # not memeber
-                    else:
-                        mapping.append(False)
-                
+                 # map for membership in current bin
+                mapping = [bin_num == ordinal_labels[i, j] for i in range(len(A))]
+  
                 # if the bin has more than one element
                 if len(col[mapping]) > 0:
                     # apply aggregate encoding on the list of elements in the bin
