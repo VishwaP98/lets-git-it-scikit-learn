@@ -10,7 +10,7 @@ import numbers
 import numpy as np
 import warnings
 import copy
-from scipy import stats
+from scipy import stats, mean
 
 from . import OneHotEncoder
 
@@ -167,6 +167,7 @@ class KBinsDiscretizer(TransformerMixin, BaseEstimator):
             )
 
         valid_encode = ('onehot', 'onehot-dense', 'ordinal', 'min', 'max', 'mean', 'median', 'mode')
+
         if self.encode not in valid_encode:
             raise ValueError("Valid options for 'encode' are {}. "
                              "Got encode={!r} instead."
@@ -305,13 +306,16 @@ class KBinsDiscretizer(TransformerMixin, BaseEstimator):
             Xt[:, jj] = np.digitize(Xt[:, jj] + eps, bin_edges[jj][1:])
         np.clip(Xt, 0, self.n_bins_ - 1, out=Xt)
 
-
         if self.encode == 'max':
             encoder = lambda x: np.max(x)
             return self._aggregate_encoder_helper(X, Xt, encoder)
 
         if self.encode == 'mode':
             encoder =  lambda x: stats.mode(x)[0][0]
+            return self._aggregate_encoder_helper(X, Xt, encoder)
+
+        if self.encode == 'mean':
+            encoder = lambda x: mean(x, axis=0)
             return self._aggregate_encoder_helper(X, Xt, encoder)
 
         if self.encode == 'ordinal':
