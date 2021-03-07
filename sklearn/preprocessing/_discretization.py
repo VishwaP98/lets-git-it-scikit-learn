@@ -167,7 +167,6 @@ class KBinsDiscretizer(TransformerMixin, BaseEstimator):
             )
 
         valid_encode = ('onehot', 'onehot-dense', 'ordinal', 'min', 'max', 'mean', 'median', 'mode')
-
         if self.encode not in valid_encode:
             raise ValueError("Valid options for 'encode' are {}. "
                              "Got encode={!r} instead."

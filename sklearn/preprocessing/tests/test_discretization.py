@@ -239,7 +239,6 @@ def test_transform_mode():
     assert not np.array_equal(X , Xt)
 
 def test_transform_mean():
-
     expected_2bins = [[-1.5, 2, -3.5, -0.75],
                       [-1.5, 2, -3.5, -0.75],
                       [ 0.5, 4, -1.5, 1.25],
