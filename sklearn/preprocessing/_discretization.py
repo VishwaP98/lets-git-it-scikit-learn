@@ -314,8 +314,7 @@ class KBinsDiscretizer(TransformerMixin, BaseEstimator):
             return self._aggregate_encoder_helper(X, Xt, encoder)
 
         if self.encode == 'mean':
-            encoder = lambda x: mean(x, axis=0)
-            return self._aggregate_encoder_helper(X, Xt, encoder)
+            return self._aggregate_encoder_helper(X, Xt, lambda x: mean(x, axis=0))
 
         if self.encode == 'ordinal':
             return Xt
