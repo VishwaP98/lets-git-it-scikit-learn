@@ -42,7 +42,7 @@ cdef class WeightVector(object):
         The squared norm of ``w``.
     """
     def __cinit__(self, double [::1] w, double [::1] aw):
-        if w.shape[0] > INT_MAX:
+        if w.shape[0] > INT_M AX:
             raise ValueError("More than %d features not supported; got %d."
                              % (INT_MAX, w.shape[0]))
         self.wscale = 1.0
