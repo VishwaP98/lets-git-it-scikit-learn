@@ -541,6 +541,7 @@ def _plain_sgd(np.ndarray[double, ndim=1, mode='c'] weights,
                 sum_batch_loss = 0
                 sum_batch_dloss = 0
                 batch_weight = 0
+                batch_counter = 0
 
                 if learning_rate == OPTIMAL:
                     eta = 1.0 / (alpha * (optimal_init + t - 1))
@@ -555,13 +556,12 @@ def _plain_sgd(np.ndarray[double, ndim=1, mode='c'] weights,
                     dataset.next(&x_data_ptr, &x_ind_ptr, &xnnz,
                                  &y, &sample_weight)
 
-                    x_data_ptr_arr[j] = x_data_ptr
-                    x_ind_ptr_arr[j] = x_ind_ptr
-                    xnnz_arr[j] = xnnz
+                    x_data_ptr_arr[batch_counter] = x_data_ptr
+                    x_ind_ptr_arr[batch_counter] = x_ind_ptr
+                    xnnz_arr[batch_counter] = xnnz
 
                     sample_index = dataset.index_data_ptr[dataset.current_index]
 
-                    # TODO: update the validation
                     if validation_mask_view[sample_index]:
                         # do not learn on the validation set
                         continue
@@ -580,7 +580,6 @@ def _plain_sgd(np.ndarray[double, ndim=1, mode='c'] weights,
 
                     sum_batch_loss += loss.loss(p, y)
 
-                    # TODO: -- NEED TO CHECK WHAT PA1 AND PA2 IS
                     if learning_rate == PA1:
                         update = sqnorm(x_data_ptr, x_ind_ptr, xnnz)
                         if update == 0:
@@ -629,10 +628,7 @@ def _plain_sgd(np.ndarray[double, ndim=1, mode='c'] weights,
                         # regression
                         update *= -1
 
-                update *= weight_update
-
-                with gil:
-                    print("update:  %d" % update)
+                # update *= weight_update
 
                 if penalty_type >= L2:
                     # do not scale to negative values when eta or alpha are too
@@ -641,14 +637,11 @@ def _plain_sgd(np.ndarray[double, ndim=1, mode='c'] weights,
                     # with gil:
                     #     print("line615, weights scale in penalty >= l2: ", weights)
 
-                # TODO: not sure about this part
                 if update != 0.0:
                     # traverse data points in current batch and apply weight update
                     for j in range(batch_size):
                         # update the w
                         w.add(x_data_ptr_arr[j], x_ind_ptr_arr[j], xnnz_arr[j], update)
-                        with gil:
-                            print("line 621: update != 0, weights", weights)
                         if fit_intercept == 1:
                             intercept += update * intercept_decay
 
