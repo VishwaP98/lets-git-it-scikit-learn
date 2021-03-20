@@ -21,13 +21,6 @@ from numpy.math cimport INFINITY
 cdef extern from "_sgd_fast_helpers.h":
     bint skl_isfinite(double) nogil
 
-ctypedef double* double_weight_pointer
-ctypedef int* int_weight_pointer
-
-cdef extern from "cpp_funcs.hpp":
-    T* array_new[T](int)
-    void array_delete[T](T* x)
-
 from ..utils._weight_vector cimport WeightVector
 from ..utils._seq_dataset cimport SequentialDataset64 as SequentialDataset
 
@@ -468,9 +461,9 @@ def _plain_sgd(np.ndarray[double, ndim=1, mode='c'] weights,
     cdef double* ps_ptr = NULL
     cdef int batch_counter = 0
 
-    cdef double_weight_pointer* x_data_ptr_arr = array_new[double_weight_pointer](batch_size)
-    cdef int_weight_pointer* x_ind_ptr_arr = array_new[int_weight_pointer](batch_size)
-    cdef int* xnnz_arr = array_new[int](batch_size)
+    cdef double* x_data_ptr_arr[1000]
+    cdef int* x_ind_ptr_arr[1000]
+    cdef int xnnz_arr[1000]
     cdef double weight_update = 0.0
 
     # helper variables
@@ -530,7 +523,7 @@ def _plain_sgd(np.ndarray[double, ndim=1, mode='c'] weights,
         optimal_init = 1.0 / (initial_eta0 * alpha)
 
     t_start = time()
-    print("batch_size", batch_size)
+    print("batch_size1000", batch_size)
     with nogil:
         for epoch in range(max_iter):
             sumloss = 0
