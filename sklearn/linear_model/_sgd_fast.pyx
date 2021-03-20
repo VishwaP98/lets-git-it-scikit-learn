@@ -21,6 +21,13 @@ from numpy.math cimport INFINITY
 cdef extern from "_sgd_fast_helpers.h":
     bint skl_isfinite(double) nogil
 
+ctypedef double* double_weight_pointer
+ctypedef int* int_weight_pointer
+
+cdef extern from "cpp_funcs.hpp":
+    T* array_new[T](int)
+    void array_delete[T](T* x)
+
 from ..utils._weight_vector cimport WeightVector
 from ..utils._seq_dataset cimport SequentialDataset64 as SequentialDataset
 
@@ -39,8 +46,6 @@ DEF INVSCALING = 3
 DEF ADAPTIVE = 4
 DEF PA1 = 5
 DEF PA2 = 6
-
-
 
 # ----------------------------------------
 # Extension Types for Loss Functions
@@ -461,12 +466,12 @@ def _plain_sgd(np.ndarray[double, ndim=1, mode='c'] weights,
     cdef double *x_data_ptr = NULL
     cdef int *x_ind_ptr = NULL
     cdef double* ps_ptr = NULL
+    cdef int batch_counter = 0
 
-    # TODO: allocate memory dynamically
-    cdef double* x_data_ptr_arr[100000]
-    cdef int* x_ind_ptr_arr[100000]
-    cdef int xnnz_arr[100000]
-
+    cdef double_weight_pointer* x_data_ptr_arr = array_new[double_weight_pointer](batch_size)
+    cdef int_weight_pointer* x_ind_ptr_arr = array_new[int_weight_pointer](batch_size)
+    cdef int* xnnz_arr = array_new[int](batch_size)
+    cdef double weight_update = 0.0
 
     # helper variables
     cdef int no_improvement_count = 0
@@ -496,7 +501,6 @@ def _plain_sgd(np.ndarray[double, ndim=1, mode='c'] weights,
     cdef double sum_batch_loss = 0.0
     cdef double sum_batch_dloss = 0.0
     cdef double avg_batch_dloss = 0.0
-    cdef int validation_sample_count = 0
     # cdef WeightVector batch_x_sum = WeightVector(np.zeros(weights.shape[0]), None)
     cdef double batch_weight = 0.0
 
@@ -543,7 +547,6 @@ def _plain_sgd(np.ndarray[double, ndim=1, mode='c'] weights,
                 # calculate the average loss in the batch
                 sum_batch_loss = 0
                 sum_batch_dloss = 0
-                validation_sample_count = 0
                 batch_weight = 0
 
                 if learning_rate == OPTIMAL:
@@ -555,10 +558,10 @@ def _plain_sgd(np.ndarray[double, ndim=1, mode='c'] weights,
                     print("outside of the batch loop weights: ", weights)
 
                 # perform gradient descent on each batch
-                for j in range(batch_size):
+                while batch_counter < batch_size:
                     dataset.next(&x_data_ptr, &x_ind_ptr, &xnnz,
                                  &y, &sample_weight)
-                    
+
                     x_data_ptr_arr[j] = x_data_ptr
                     x_ind_ptr_arr[j] = x_ind_ptr
                     xnnz_arr[j] = xnnz
@@ -568,7 +571,6 @@ def _plain_sgd(np.ndarray[double, ndim=1, mode='c'] weights,
                     # TODO: update the validation
                     if validation_mask_view[sample_index]:
                         # do not learn on the validation set
-                        validation_sample_count += 1
                         continue
 
                     p = w.dot(x_data_ptr, x_ind_ptr, xnnz) + intercept
@@ -580,6 +582,8 @@ def _plain_sgd(np.ndarray[double, ndim=1, mode='c'] weights,
                         class_weight = weight_pos
                     else:
                         class_weight = weight_neg
+
+                    weight_update += class_weight * sample_weight
 
                     sum_batch_loss += loss.loss(p, y)
 
@@ -603,10 +607,14 @@ def _plain_sgd(np.ndarray[double, ndim=1, mode='c'] weights,
 
                         sum_batch_dloss += dloss
 
+                    # go to next element
+                    batch_counter += 1
+
                 # outside of the batch loop ---------------
-                avg_batch_loss = sum_batch_loss / (batch_size - validation_sample_count)
-                avg_batch_dloss = sum_batch_dloss / (batch_size - validation_sample_count)
-                # batch_x_sum.scale(1 / (batch_size - validation_sample_count))
+                avg_batch_loss = sum_batch_loss / (batch_size)
+                avg_batch_dloss = sum_batch_dloss / (batch_size)
+                weight_update = weight_update / batch_size
+                # batch_x_sum.scale(1 / (batch_size))
                 # with gil:
                 #     print("after scale:", )
                 # update after each batch
@@ -628,7 +636,7 @@ def _plain_sgd(np.ndarray[double, ndim=1, mode='c'] weights,
                         # regression
                         update *= -1
 
-                update *= class_weight * sample_weight
+                update *= weight_update
 
                 with gil:
                     print("update:  %d" % update)
