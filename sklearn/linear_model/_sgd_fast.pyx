@@ -494,7 +494,6 @@ def _plain_sgd(np.ndarray[double, ndim=1, mode='c'] weights,
     cdef double sum_batch_loss = 0.0
     cdef double sum_batch_dloss = 0.0
     cdef double avg_batch_dloss = 0.0
-    # cdef WeightVector batch_x_sum = WeightVector(np.zeros(weights.shape[0]), None)
     cdef double batch_weight = 0.0
 
     cdef long long sample_index
@@ -523,8 +522,9 @@ def _plain_sgd(np.ndarray[double, ndim=1, mode='c'] weights,
         optimal_init = 1.0 / (initial_eta0 * alpha)
 
     t_start = time()
-    if verbose > 0:
-        print("batch_size", batch_size)
+
+    if verbose:
+        print("Batch size: ", batch_size)
 
     with nogil:
         for epoch in range(max_iter):
@@ -550,9 +550,6 @@ def _plain_sgd(np.ndarray[double, ndim=1, mode='c'] weights,
                     eta = 1.0 / (alpha * (optimal_init + t - 1))
                 elif learning_rate == INVSCALING:
                     eta = eta0 / pow(t, power_t)
-
-                with gil:
-                    print("outside of the batch loop weights: ", weights)
 
                 # perform gradient descent on each batch
                 while batch_counter < batch_size:
@@ -609,9 +606,7 @@ def _plain_sgd(np.ndarray[double, ndim=1, mode='c'] weights,
                 avg_batch_loss = sum_batch_loss / (batch_size)
                 avg_batch_dloss = sum_batch_dloss / (batch_size)
                 weight_update = weight_update / batch_size
-                # batch_x_sum.scale(1 / (batch_size))
-                # with gil:
-                #     print("after scale:", )
+
                 # update after each batch
                 if learning_rate == PA1:
                     update = 0.0
@@ -620,9 +615,6 @@ def _plain_sgd(np.ndarray[double, ndim=1, mode='c'] weights,
                 else:
                     update = -eta * avg_batch_dloss
 
-                with gil:
-                    print("sum_batch_dloss: ", sum_batch_dloss, "update: ", update)
-                # need to check what pa1 and pa2 is, need to combine with if statement above
                 if learning_rate >= PA1:
                     if is_hinge:
                         # classification
@@ -633,12 +625,14 @@ def _plain_sgd(np.ndarray[double, ndim=1, mode='c'] weights,
 
                 update *= weight_update
 
+                if verbose:
+                    with gil:
+                        print("Update: ", update)
+
                 if penalty_type >= L2:
                     # do not scale to negative values when eta or alpha are too
                     # big: instead set the weights to zero
                     w.scale(max(0, 1.0 - ((1.0 - l1_ratio) * eta * alpha)))
-                    # with gil:
-                    #     print("line615, weights scale in penalty >= l2: ", weights)
 
                 if update != 0.0:
                     # traverse data points in current batch and apply weight update
@@ -648,8 +642,6 @@ def _plain_sgd(np.ndarray[double, ndim=1, mode='c'] weights,
                         if fit_intercept == 1:
                             intercept += update * intercept_decay
 
-                # with gil:
-                #     print("line 619: average: ", average)
                 if 0 < average <= t:
                     # compute the average for the intercept and update the
                     # average weights, this is done regardless as to whether
