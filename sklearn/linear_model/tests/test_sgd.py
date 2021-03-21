@@ -369,7 +369,6 @@ def test_adaptive_longer_than_constant(klass):
                                    SGDRegressor, SparseSGDRegressor])
 def test_validation_set_not_used_for_training(klass):
     X, Y = iris.data, iris.target
-    print(X)
     validation_fraction = 0.4
     seed = 42
     shuffle = False
