@@ -47,6 +47,8 @@ DEFAULT_EPSILON = 0.1
 
 MAX_INT = np.iinfo(np.int32).max
 
+MAX_DLOSS = 1e12
+
 
 class _ValidationScoreCallback:
     """Callback for early stopping based on validation score"""
@@ -434,13 +436,22 @@ def fit_binary(est, i, X, y, alpha, C, learning_rate, max_iter,
     seed = random_state.randint(MAX_INT)
 
     tol = est.tol if est.tol is not None else -np.inf
-    coef, intercept, average_coef, average_intercept, n_iter_ = _plain_sgd(
-        coef, intercept, average_coef, average_intercept, est.loss_function_,
-        penalty_type, alpha, C, est.l1_ratio, dataset, validation_mask,
-        est.early_stopping, validation_score_cb, int(est.n_iter_no_change),
-        max_iter, tol, int(est.fit_intercept), int(est.verbose),
-        int(est.shuffle), seed, pos_weight, neg_weight, learning_rate_type,
-        est.eta0, est.power_t, est.t_, intercept_decay, est.average, batch_size)
+    # coef, intercept, average_coef, average_intercept, n_iter_ = _plain_sgd(
+    #     coef, intercept, average_coef, average_intercept, est.loss_function_,
+    #     penalty_type, alpha, C, est.l1_ratio, dataset, validation_mask,
+    #     est.early_stopping, validation_score_cb, int(est.n_iter_no_change),
+    #     max_iter, tol, int(est.fit_intercept), int(est.verbose),
+    #     int(est.shuffle), seed, pos_weight, neg_weight, learning_rate_type,
+    #     est.eta0, est.power_t, est.t_, intercept_decay, est.average, batch_size)
+
+    coef, intercept, n_iter_ = _mini_batch_sgd(coef, intercept, est.loss_function_, X, y_i,
+                                               max_iter, batch_size, learning_rate_type,
+                                               sample_weight, pos_weight,
+                                               neg_weight, int(est.fit_intercept),
+                                               tol, est.early_stopping, int(est.n_iter_no_change),
+                                               est.eta0, alpha, int(est.shuffle), penalty_type,
+                                               est.l1_ratio,
+                                               est.power_t, est.t_,intercept_decay)
 
     if est.average:
         if len(est.classes_) == 2:
@@ -450,6 +461,141 @@ def fit_binary(est, i, X, y, alpha, C, learning_rate, max_iter,
 
     return coef, intercept, n_iter_
 
+
+def _mini_batch_sgd(coef, intercept, loss, X, y,
+                    max_iter, batch_size, learning_rate_type,
+                    sample_weights, weight_pos,
+                    weight_neg, fit_intercept,
+                    tol, early_stopping, n_iter_no_change,
+                    eta0, alpha, shuffle, penalty_type,
+                    l1_ratio,
+                    power_t, t=1, intercept_decay=1):
+    best_loss = np.inf
+    n_samples = X.shape[0]
+    no_improvement_count = 0
+
+    if penalty_type == PENALTY_TYPES['l2']:
+        l1_ratio = 0.0
+    elif penalty_type == PENALTY_TYPES['l1']:
+        l1_ratio = 1.0
+
+    eta = eta0
+    epoch = 0
+
+    if learning_rate_type == LEARNING_RATE_TYPES["optimal"]:
+        typw = np.sqrt(1.0 / np.sqrt(alpha))
+        # computing eta0, the initial learning rate
+        initial_eta0 = typw / max(1.0, loss.py_dloss(-typw, 1.0))
+        # initialize t such that eta at first sample equals eta0
+        optimal_init = 1.0 / (initial_eta0 * alpha)
+
+    for iter in range(max_iter):
+        epoch = iter
+        print("epoch: ", epoch)
+        sumloss = 0
+
+        permutation = np.random.permutation(X.shape[0])
+        X_train, y_train = X[permutation], y[permutation]
+
+        if learning_rate_type == LEARNING_RATE_TYPES["optimal"]:
+            eta = 1.0 / (alpha * (optimal_init + t - 1))
+        elif learning_rate_type == LEARNING_RATE_TYPES["invscaling"]:
+            eta = eta0 / pow(t, power_t)
+
+        for i in range(0, X_train.shape[0], batch_size):
+            X_train_mini = X_train[i: i + batch_size]
+            y_train_mini = y_train[i: i + batch_size]
+
+            coef, intercept, sumloss = _sgd_step(coef, intercept, loss, X_train_mini, y_train_mini, eta,
+                                                 sample_weights, weight_pos,
+                                                 weight_neg, intercept_decay, fit_intercept, sumloss, early_stopping,
+                                                 penalty_type, l1_ratio, alpha)
+
+        # evaluate the score on the validation set
+        if early_stopping:
+            pass
+        # or evaluate the loss on the training set
+        else:
+            if tol > -np.inf and sumloss > best_loss - tol * n_samples:
+                no_improvement_count += 1
+            else:
+                no_improvement_count = 0
+            if sumloss < best_loss:
+                best_loss = sumloss
+
+        if no_improvement_count >= n_iter_no_change:
+            if learning_rate_type == LEARNING_RATE_TYPES["adaptive"] and eta > 1e-6:
+                eta = eta / 5
+                no_improvement_count = 0
+            else:
+                # if verbose:
+                print("Convergence after %d epochs " % (iter + 1))
+                break
+    print("coef, intercept ", coef, intercept)
+    return coef, intercept , epoch+1
+
+
+def _sgd_step(coef, intercept, loss, X_train, y_train, learning_rate, sample_weights, weight_pos,
+              weight_neg, intercept_decay, fit_intercept, sumloss, early_stopping, penalty_type,
+              l1_ratio, alpha):
+    grad_coef, grad_intercept, sumloss = _get_minibatch_grad(coef, intercept, loss, X_train, y_train,
+                                                             sample_weights, weight_pos,
+                                                             weight_neg, intercept_decay, sumloss, early_stopping,
+                                                             penalty_type, l1_ratio, learning_rate, alpha)
+    # print("coef: ", coef,
+    #       "intercept", intercept)
+    new_coef = coef - (learning_rate * grad_coef)
+    # TODO: might not need to update intercept/bias
+    new_intercept = intercept
+    if fit_intercept == 1:
+        new_intercept = intercept - (learning_rate * grad_intercept)
+    return new_coef, new_intercept, sumloss
+
+
+def _get_minibatch_grad(coef, intercept, loss, X_train, y_train, sample_weights, weight_pos,
+                        weight_neg, intercept_decay, sumloss, early_stopping, penalty_type,
+                        l1_ratio, learning_rate, alpha):
+    xs, errs, weights = [], [], []
+
+    for x, y, sample_weight in zip(X_train, y_train, sample_weights):
+        # scale = 1
+        #
+        # if penalty_type >= PENALTY_TYPES['l2']:
+        #     # do not scale to negative values when eta or alpha are too
+        #     # big: instead set the weights to zero
+        #
+        #     scale = max(0, 1.0 - ((1.0 - l1_ratio) * learning_rate * alpha))
+
+
+        y_pred = _forward(coef, intercept, x)
+
+        if y > 0.0:
+            class_weight = weight_pos
+        else:
+            class_weight = weight_neg
+
+        weight = class_weight * sample_weight
+        weights.append(weight)
+        # TODO: need to update this if learning_rate is pa1 or pa2
+        err = loss.py_dloss(y_pred, y)
+        if err < -MAX_DLOSS:
+            err = -MAX_DLOSS
+        elif err > MAX_DLOSS:
+            err = MAX_DLOSS
+
+        if not early_stopping:
+            sumloss += loss.py_loss(y_pred, y)
+        xs.append(x)
+        errs.append(err)
+
+    grad_coef = np.dot(np.array(errs) * np.array(weights), X_train)
+    grad_intercept = np.dot(np.array(errs), np.array(weights)) * intercept_decay
+
+    return grad_coef, grad_intercept, sumloss
+
+def _forward(coef, intercept, x):
+    # print("forward coef: ", coef)
+    return np.dot(coef, x) + intercept
 
 class BaseSGDClassifier(LinearClassifierMixin, BaseSGD, metaclass=ABCMeta):
 
