@@ -408,6 +408,10 @@ def fit_binary(est, i, X, y, alpha, C, learning_rate, max_iter,
         If RandomState instance, random_state is the random number generator;
         If None, the random number generator is the RandomState instance used
         by `np.random`.
+
+    batch_size: int, default = 1
+        The batch_size specifies the number of data points to be considered
+        when calculating the gradient descent.
     """
     # if average is not true, average_coef, and average_intercept will be
     # unused
