@@ -434,6 +434,10 @@ def fit_binary(est, i, X, y, alpha, C, learning_rate, max_iter,
     seed = random_state.randint(MAX_INT)
 
     tol = est.tol if est.tol is not None else -np.inf
+
+    if batch_size is None or batch_size <= 0:
+        raise ValueError("Batch size is not valid. Batch size: ", batch_size)
+
     coef, intercept, average_coef, average_intercept, n_iter_ = _plain_sgd(
         coef, intercept, average_coef, average_intercept, est.loss_function_,
         penalty_type, alpha, C, est.l1_ratio, dataset, validation_mask,
