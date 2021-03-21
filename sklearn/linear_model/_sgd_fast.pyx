@@ -433,6 +433,9 @@ def _plain_sgd(np.ndarray[double, ndim=1, mode='c'] weights,
     average : int
         The number of iterations before averaging starts. average=1 is
         equivalent to averaging for all iterations.
+    batch_size: int, default = 1
+        The batch_size specifies the number of data points to be considered
+        when calculating the gradient descent.
 
     Returns
     -------
