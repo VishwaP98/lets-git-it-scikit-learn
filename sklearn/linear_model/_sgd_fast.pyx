@@ -608,11 +608,7 @@ def _plain_sgd(np.ndarray[double, ndim=1, mode='c'] weights,
                 weight_update = weight_update / batch_size
 
                 # update after each batch
-                if learning_rate == PA1:
-                    update = 0.0
-                elif learning_rate == PA2:
-                    update = 0.0
-                else:
+                if learning_rate != PA1 and learning_rate != PA2:
                     update = -eta * avg_batch_dloss
 
                 if learning_rate >= PA1:
@@ -649,8 +645,6 @@ def _plain_sgd(np.ndarray[double, ndim=1, mode='c'] weights,
 
                     w.add_average(x_data_ptr, x_ind_ptr, xnnz,
                                   update, (t - average + 1))
-                    with gil:
-                        print("added average: ", weights)
                     average_intercept += ((intercept - average_intercept) /
                                           (t - average + 1))
 
