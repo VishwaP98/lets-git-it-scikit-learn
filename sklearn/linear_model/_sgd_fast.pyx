@@ -523,7 +523,9 @@ def _plain_sgd(np.ndarray[double, ndim=1, mode='c'] weights,
         optimal_init = 1.0 / (initial_eta0 * alpha)
 
     t_start = time()
-    print("batch_size1000", batch_size)
+    if verbose > 0:
+        print("batch_size", batch_size)
+
     with nogil:
         for epoch in range(max_iter):
             sumloss = 0
@@ -542,6 +544,7 @@ def _plain_sgd(np.ndarray[double, ndim=1, mode='c'] weights,
                 sum_batch_dloss = 0
                 batch_weight = 0
                 batch_counter = 0
+                weight_update = 0.0
 
                 if learning_rate == OPTIMAL:
                     eta = 1.0 / (alpha * (optimal_init + t - 1))
@@ -628,7 +631,7 @@ def _plain_sgd(np.ndarray[double, ndim=1, mode='c'] weights,
                         # regression
                         update *= -1
 
-                # update *= weight_update
+                update *= weight_update
 
                 if penalty_type >= L2:
                     # do not scale to negative values when eta or alpha are too
