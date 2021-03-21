@@ -951,6 +951,10 @@ class SGDClassifier(BaseSGDClassifier):
         Number of weight updates performed during training.
         Same as ``(n_iter_ * n_samples)``.
 
+    batch_size: int, default = 1
+        The batch_size specifies the number of data points to be considered
+        when calculating the gradient descent.
+
     See Also
     --------
     sklearn.svm.LinearSVC : Linear support vector classification.
