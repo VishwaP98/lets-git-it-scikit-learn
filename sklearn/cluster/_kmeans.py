@@ -2027,7 +2027,6 @@ class BisectingKMeans():
         self.labels = None  # np arrays with the same size as X
         self.centroids = None
         self.scores = None
-        pass
 
     def fit(self, X):
         """
@@ -2048,6 +2047,7 @@ class BisectingKMeans():
             # use labels to create a mask and filter X
 
             target_label_indices = np.where(labels == target_label)
+            print(target_label_indices, "are the target label indices")
 
             # using the target_label_indices get the corresponding X values into sub_X
             # sub_X = X[target_label_indices]
@@ -2080,3 +2080,31 @@ class BisectingKMeans():
 
         return self
 
+    def _update_labels(self, sub_labels, target_label_indices, target_label):
+        """
+        Update the labels in X based on sub_labels outputted by the KMeans cluster split
+
+        sub_labels: contains 0 or 1 for sub_X inputted into the KMeans call
+        target_label_indices: contains indices within X that have the label value as target_label
+
+        """
+        # sub_labels=[0,0,1]-> 1 -> target_label_indices
+        # map the sub_labels to actual indices in the target_label_indices
+        one_label_indices = target_label_indices[np.where(sub_labels == 1)]
+        print(one_label_indices, "one_label_indices")
+
+        # set value target_label + 1 for indices where sub_labels == 1
+
+        self.labels[one_label_indices] = target_label + 1
+        print(self.labels, "updated labels!")
+
+    def _update_centroids(self, sub_centroids, target_label):
+        """
+        Update the centroids based on sub_centroids outputted by the KMeans cluster split
+
+        sub_centroids: contains cluster locations for sub_X inputted into the KMeans call
+        target_label_indices: contains indices within X that have the label value as target_label
+
+        """
+        self.centroids[target_label] = sub_centroids[0]
+        self.centroids = np.append(self.centroids, np.array([sub_centroids[1]]), axis=0)

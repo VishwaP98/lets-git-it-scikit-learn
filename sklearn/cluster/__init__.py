@@ -9,7 +9,7 @@ from ._mean_shift import (mean_shift, MeanShift,
 from ._affinity_propagation import affinity_propagation, AffinityPropagation
 from ._agglomerative import (ward_tree, AgglomerativeClustering,
                              linkage_tree, FeatureAgglomeration)
-from ._kmeans import k_means, KMeans, MiniBatchKMeans, kmeans_plusplus
+from ._kmeans import k_means, KMeans, MiniBatchKMeans, kmeans_plusplus, BisectingKMeans
 from ._dbscan import dbscan, DBSCAN
 from ._optics import (OPTICS, cluster_optics_dbscan, compute_optics_graph,
                       cluster_optics_xi)
@@ -18,6 +18,7 @@ from ._birch import Birch
 
 __all__ = ['AffinityPropagation',
            'AgglomerativeClustering',
+           'BisectingKMeans',
            'Birch',
            'DBSCAN',
            'OPTICS',
