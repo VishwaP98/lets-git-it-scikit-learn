@@ -158,7 +158,6 @@ def _tolerance(X, tol):
         variances = np.var(X, axis=0)
     return np.mean(variances) * tol
 
-
 @_deprecate_positional_args
 def k_means(X, n_clusters, *, sample_weight=None, init='k-means++',
             precompute_distances='deprecated', n_init=10, max_iter=300,
@@ -2080,3 +2079,57 @@ class BisectingKMeans():
 
         return self
 
+
+    def _euclidean_distance(self, x1, x2):
+        '''Compute the euclidean distance between points x1 and x2
+
+        Parameters
+        ----------
+        x1 : n-dimensional ndarray of integers
+        x2 : n-dimensional ndarray of integers
+
+        Returns
+        -------
+        distance : non-negative float
+
+        >>> _euclidean_distance([1, 0, 1], [0, 1, 1])
+            sqrt(2)
+        '''
+        distance = 0
+        for a, b in zip(x1, x2):
+            distance += (a - b)**2
+        return distance**0.5
+        
+
+    def predict(self, X):
+        """Predict the closest cluster each sample in X belongs to.
+
+        Parameters
+        ----------
+        X : {array-like, sparse matrix} of shape (n_samples, n_features)
+            New data to predict.
+
+        Returns
+        -------
+        predictions : ndarray of shape (n_samples,)
+
+        """
+        predictions = []
+
+        # for each point in X, check which centroid is closest
+        for x in X:
+            # inertia = sum of squared distance to cluster centroid
+            min_inertia = float('inf')
+            label = 0
+
+            for i in range(len(self.centroids)):
+                centroid = self.centroids[i]
+                inertia = self._euclidean_distance(x, centroid)
+
+                if inertia < min_inertia:
+                    min_inertia = inertia
+                    label = i
+            
+            predictions.append(label)
+
+        return predictions
