@@ -2018,3 +2018,65 @@ def kmeans_plusplus(X, n_clusters, *, x_squared_norms=None,
                                         random_state, n_local_trials)
 
     return centers, indices
+
+
+class BisectingKMeans():
+
+    def __init__(self, max_n_clusters):
+        self.max_n_clusters = max_n_clusters
+        self.labels = None  # np arrays with the same size as X
+        self.centroids = None
+        self.scores = None
+        pass
+
+    def fit(self, X):
+        """
+        :param X:
+        :return:
+        """
+        # check fitted
+        # check type of X
+        # init
+        labels = np.zeros(X.shape[0])
+        largestLabel = 0
+
+        for i in range(self.max_n_clusters - 1):
+            kmeans = KMeans(n_clusters=2, init='k-means++')
+            # target_label = self._next_cluster_to_split()
+            target_label = 2
+            # find corresponding points in the target_cluster call sub_X
+            # use labels to create a mask and filter X
+
+            target_label_indices = np.where(labels == target_label)
+
+            # using the target_label_indices get the corresponding X values into sub_X
+            # sub_X = X[target_label_indices]
+
+            # kmeans.fit(sub_X)
+            # sub_labels = kmeans.labels_  # np.ndarray with lengh equal to sub_X, labels 0 or 1
+            # score = kmeans.score()
+            # sub_centroids = kmeans.cluster_centers_
+
+            # end of this loop[]
+
+            # kmeans = KMeans(n_clusters=3, random_state=0).fit(X)
+            # print(kmeans.labels_)
+            # print(kmeans.cluster_centers_)
+
+            # update X with new labels
+            # [0, 1] -> map elements with 0 label to targetLabel and
+            # elements with 1 label to largestLabel+1
+            # update labels using sub_labels
+
+            # self._update_labels(sub_labels, target_label_indices, target_label)
+            # self._update_centroids(sub_centroids, target_label)
+            # self._update_scores(sub_scores, target_label)
+
+            # update self.centroids self.scores with new labels and sub_scores
+
+            # if early_stopping:
+            #     # check stopping criteria
+            #     break
+
+        return self
+
