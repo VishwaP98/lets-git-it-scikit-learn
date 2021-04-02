@@ -1091,3 +1091,32 @@ def test_kmeans_plusplus_dataorder():
     centers_fortran, _ = kmeans_plusplus(X_fortran, n_clusters, random_state=0)
 
     assert_allclose(centers_c, centers_fortran)
+
+
+# -----------BisectingKMeans Unit Tests------------------
+@pytest.mark.parametrize("array_constr", [np.array, sp.csr_matrix],
+                         ids=["dense", "sparse"])
+def test_predict(array_constr):
+    X, _ = make_blobs(n_samples=500, n_features=10, centers=10, random_state=0)
+    X = array_constr(X)
+
+    # 10 clusters
+    clf = BisectingKMeans(max_n_clusters=10)
+    clf.fit(X)
+    labels = clf.labels
+
+    # re-predict labels for training set using predict
+    pred = clf.predict(X)
+    assert_array_equal(pred, labels)
+
+    # re-predict labels for training set using fit_predict
+    pred = clf.fit_predict(X)
+    assert_array_equal(pred, labels)
+
+    # predict centroid labels
+    pred = clf.predict(clf.centroids)
+    assert_array_equal(pred, np.arange(10))
+
+def test_euclidean_distance():
+    distance = BisectingKMeans()._euclidean_distance([1, 0, 1], [0, 1, 1])
+    assert(distance, 2**(.5))
