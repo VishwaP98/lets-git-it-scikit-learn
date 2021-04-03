@@ -2116,6 +2116,9 @@ class BisectingKMeans():
         predictions : ndarray of shape (n_samples,)
 
         """
+        # TODO check is fitted
+        # check_is_fitted(self)
+
         predictions = []
 
         # for each point in X, check which centroid is closest

@@ -1095,11 +1095,13 @@ def test_kmeans_plusplus_dataorder():
 
 # -----------BisectingKMeans Unit Tests------------------
               
-@pytest.mark.parametrize("clf", [BisectingKMeans(max_n_clusters=1), BisectingKMeans(max_n_clusters=10)])
-def test_predict(clf):
+@pytest.mark.parametrize("max_n_clusters", [1, 10])
+def test_predict(max_n_clusters):
     n_samples = 500
     n_features = 10
     X = np.random.rand(n_samples,n_features)
+
+    clf = BisectingKMeans(max_n_clusters)
 
     clf.fit(X)
     labels = clf.labels
@@ -1112,7 +1114,8 @@ def test_predict(clf):
     # pred = clf.predict(clf.centroids)
     # assert_array_equal(pred, np.arange(clf.max_n_clusters))
 
-@pytest.mark.parametrize("clf", [BisectingKMeans(max_n_clusters=1), BisectingKMeans(max_n_clusters=10)])
-def test_euclidean_distance(clf):
+@pytest.mark.parametrize("max_n_clusters", [1, 10])
+def test_euclidean_distance(max_n_clusters):
+    clf = BisectingKMeans(max_n_clusters)
     distance = clf._euclidean_distance([1, 0, 1], [0, 1, 1])
     assert distance == 2**(.5)
