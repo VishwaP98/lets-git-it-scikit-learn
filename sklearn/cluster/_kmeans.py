@@ -2047,7 +2047,6 @@ class BisectingKMeans():
             # use labels to create a mask and filter X
 
             target_label_indices = np.where(labels == target_label)
-            print(target_label_indices, "are the target label indices")
 
             # using the target_label_indices get the corresponding X values into sub_X
             # sub_X = X[target_label_indices]
@@ -2091,12 +2090,10 @@ class BisectingKMeans():
         # sub_labels=[0,0,1]-> 1 -> target_label_indices
         # map the sub_labels to actual indices in the target_label_indices
         one_label_indices = target_label_indices[np.where(sub_labels == 1)]
-        print(one_label_indices, "one_label_indices")
 
         # set value target_label + 1 for indices where sub_labels == 1
 
         self.labels[one_label_indices] = target_label + 1
-        print(self.labels, "updated labels!")
 
     def _update_centroids(self, sub_centroids, target_label):
         """

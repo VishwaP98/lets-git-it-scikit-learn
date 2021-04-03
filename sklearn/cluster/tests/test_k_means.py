@@ -1097,10 +1097,9 @@ max_n_clusters = 3
 
 def test_bisecting_kmeans_update_labels_1():
 
-    max_n_clusters = 3
     bisecting_kmeans = BisectingKMeans(max_n_clusters)
     
-    X = np.array([[1], [2], [3], [4], [5], [6], [7], [8], [10]])
+    # X = np.array([[1], [2], [3], [4], [5], [6], [7], [8], [10]])
     bisecting_kmeans.labels = np.array([0, 0, 0, 1, 1, 1, 2, 2, 2])
     sub_labels = np.array([0, 0, 1])
     target_label = 2
@@ -1116,9 +1115,9 @@ def test_bisecting_kmeans_update_labels_2():
 
     bisecting_kmeans = BisectingKMeans(max_n_clusters)
     
-    X = np.array([[1], [2], [3],
-                  [4], [5], [6],
-                  [7], [8], [10]])
+    # X = np.array([[1], [2], [3],
+    #               [4], [5], [6],
+    #               [7], [8], [10]])
 
     bisecting_kmeans.labels = np.array([0, 0, 0, 1, 1, 1, 2, 2, 2])
     sub_labels = np.array([1, 0, 1])
@@ -1134,9 +1133,9 @@ def test_bisecting_kmeans_update_labels_2():
 def test_bisecting_kmeans_update_centroids():
     bisection_kmeans = BisectingKMeans(max_n_clusters)
 
-    X = np.array([[1], [2], [3],
-                  [4], [5], [6],
-                  [7], [8], [10]])
+    # X = np.array([[1], [2], [3],
+    #               [4], [5], [6],
+    #               [7], [8], [10]])
 
     # we choose to split cluster/label 2, because it has he largest variance
     # sub_X = np.array([[7], [8], [10]])
