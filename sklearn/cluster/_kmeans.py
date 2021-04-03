@@ -2027,7 +2027,6 @@ class BisectingKMeans():
         self.labels = None  # np arrays with the same size as X
         self.centroids = None
         self.scores = None
-        pass
 
     def fit(self, X):
         """
@@ -2038,7 +2037,6 @@ class BisectingKMeans():
         # check type of X
         # init
         labels = np.zeros(X.shape[0])
-        largestLabel = 0
 
         for i in range(self.max_n_clusters - 1):
             kmeans = KMeans(n_clusters=2, init='k-means++')
@@ -2068,7 +2066,7 @@ class BisectingKMeans():
             # elements with 1 label to largestLabel+1
             # update labels using sub_labels
 
-            # self._update_labels(sub_labels, target_label_indices, target_label)
+            # self._update_labels(sub_labels, target_label_indices, i + 1)
             # self._update_centroids(sub_centroids, target_label)
             # self._update_scores(sub_scores, target_label)
 
@@ -2080,3 +2078,27 @@ class BisectingKMeans():
 
         return self
 
+    def _update_labels(self, sub_labels, target_label_indices, new_label):
+        """
+        Update the labels in X based on sub_labels outputted by the KMeans cluster split
+
+        sub_labels: contains 0 or 1 for sub_X inputted into the KMeans call
+        target_label_indices: contains indices within X that have the label value as target_label
+
+        """
+        # map the sub_labels to actual indices in the target_label_indices
+        one_label_indices = target_label_indices[np.where(sub_labels == 1)]
+
+        # set value target_label + 1 for indices where sub_labels == 1
+        self.labels[one_label_indices] = new_label
+
+    def _update_centroids(self, sub_centroids, target_label):
+        """
+        Update the centroids based on sub_centroids outputted by the KMeans cluster split
+
+        sub_centroids: contains cluster locations for sub_X inputted into the KMeans call
+        target_label_indices: contains indices within X that have the label value as target_label
+
+        """
+        self.centroids[target_label] = sub_centroids[0]
+        self.centroids = np.append(self.centroids, np.array([sub_centroids[1]]), axis=0)

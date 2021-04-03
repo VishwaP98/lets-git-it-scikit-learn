@@ -22,6 +22,7 @@ from sklearn.metrics import pairwise_distances_argmin
 from sklearn.metrics.cluster import v_measure_score
 from sklearn.cluster import KMeans, k_means, kmeans_plusplus
 from sklearn.cluster import MiniBatchKMeans
+from sklearn.cluster import BisectingKMeans
 from sklearn.cluster._kmeans import _labels_inertia
 from sklearn.cluster._kmeans import _mini_batch_step
 from sklearn.cluster._k_means_fast import _relocate_empty_clusters_dense
@@ -1091,3 +1092,43 @@ def test_kmeans_plusplus_dataorder():
     centers_fortran, _ = kmeans_plusplus(X_fortran, n_clusters, random_state=0)
 
     assert_allclose(centers_c, centers_fortran)
+
+max_n_clusters = 3
+
+@pytest.mark.parametrize("sub_labels,expected_labels", [
+    (np.array([0, 0, 1]), np.array([0, 0, 0, 1, 1, 1, 2, 2, 3])), 
+    (np.array([1, 0, 1]), np.array([0, 0, 0, 1, 1, 1, 3, 2, 3]))])
+def test_bisecting_kmeans_update_labels(sub_labels, expected_labels):
+
+    bisecting_kmeans = BisectingKMeans(max_n_clusters)
+    
+    # X = np.array([[1], [2], [3], [4], [5], [6], [7], [8], [10]])
+    bisecting_kmeans.labels = np.array([0, 0, 0, 1, 1, 1, 2, 2, 2])
+    target_label = 2
+    new_label = 3
+    target_label_indices = np.array([6,7,8])
+
+    bisecting_kmeans._update_labels(sub_labels, target_label_indices, new_label)
+
+    assert_array_equal(bisecting_kmeans.labels, expected_labels)
+
+def test_bisecting_kmeans_update_centroids():
+    bisection_kmeans = BisectingKMeans(max_n_clusters)
+
+    # X = np.array([[1], [2], [3],
+    #               [4], [5], [6],
+    #               [7], [8], [10]])
+
+    # we choose to split cluster/label 2, because it has he largest variance
+    # sub_X = np.array([[7], [8], [10]])
+    # sub_labels = np.array([0, 0, 1])
+    # target_label_indices = np.array([6, 7, 8])
+
+    target_label = 2
+    bisection_kmeans.centroids = np.array([[2], [5], [8.33]])
+    sub_centroids = np.array([[7.5], [10]])
+
+    bisection_kmeans._update_centroids(sub_centroids, target_label)
+    assert_array_equal(bisection_kmeans.centroids, np.array([[2], [5], [7.5], [10]]))
+
+    
