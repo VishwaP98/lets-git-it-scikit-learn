@@ -1131,4 +1131,22 @@ def test_bisecting_kmeans_update_centroids():
     bisection_kmeans._update_centroids(sub_centroids, target_label)
     assert_array_equal(bisection_kmeans.centroids, np.array([[2], [5], [7.5], [10]]))
 
-    
+
+def test_bisecting_kmeans_update_scores():
+    max_n_clusters = 3
+    bisection_kmeans = BisectingKMeans(max_n_clusters)
+
+    # X = np.array([[1], [2], [3],
+    #               [4], [5], [6],
+    #               [7], [8], [10]])
+    # we choose to split cluster/label 2, because it has he largest variance
+    # sub_X = np.array([[7], [8], [10]])
+    # sub_labels = np.array([0, 0, 1])
+    # target_label_indices = np.array([6, 7, 8])
+
+    target_label = 2
+    bisection_kmeans.scores = np.array([2., 2., 4.])
+    sub_scores = np.array([0.5, 0])
+
+    bisection_kmeans._update_scores(sub_scores, target_label)
+    assert_array_equal(bisection_kmeans.scores, np.array([2, 2, 0.5, 0]))
