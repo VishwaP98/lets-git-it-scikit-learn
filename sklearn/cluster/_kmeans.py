@@ -2080,3 +2080,16 @@ class BisectingKMeans():
 
         return self
 
+    def _next_cluster_to_split(self):
+        """
+        Returns the next cluster to split based on the scores for each cluster
+        """
+        
+        max_score = 0.0
+        cluster = 0
+        for i in range(0, len(self.scores)):
+            if max_score < self.scores[i]:
+                max_score = self.scores[i]
+                cluster = i
+                
+        return cluster

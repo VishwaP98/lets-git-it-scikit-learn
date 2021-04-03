@@ -32,7 +32,7 @@ from sklearn.cluster._k_means_fast import _euclidean_sparse_dense_wrapper
 from sklearn.cluster._k_means_fast import _inertia_dense
 from sklearn.cluster._k_means_fast import _inertia_sparse
 from sklearn.datasets import make_blobs
-from sklearn.cluster._bisectingkmeans import BisectingKMeans
+from sklearn.cluster._kmeans import BisectingKMeans
 from io import StringIO
 
 
