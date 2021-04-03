@@ -12,6 +12,7 @@ from sklearn.utils._testing import assert_array_equal
 from sklearn.utils._testing import assert_array_almost_equal
 from sklearn.utils._testing import assert_allclose
 from sklearn.utils._testing import assert_almost_equal
+from numpy.testing import assert_equal
 from sklearn.utils.fixes import _astype_copy_false
 from sklearn.base import clone
 from sklearn.exceptions import ConvergenceWarning
@@ -31,6 +32,7 @@ from sklearn.cluster._k_means_fast import _euclidean_dense_dense_wrapper
 from sklearn.cluster._k_means_fast import _euclidean_sparse_dense_wrapper
 from sklearn.cluster._k_means_fast import _inertia_dense
 from sklearn.cluster._k_means_fast import _inertia_sparse
+from sklearn.cluster._kmeans import BisectingKMeans
 from sklearn.datasets import make_blobs
 from io import StringIO
 
@@ -1093,6 +1095,7 @@ def test_kmeans_plusplus_dataorder():
 
     assert_allclose(centers_c, centers_fortran)
 
+
 max_n_clusters = 3
 
 @pytest.mark.parametrize("sub_labels,expected_labels", [
@@ -1131,4 +1134,28 @@ def test_bisecting_kmeans_update_centroids():
     bisection_kmeans._update_centroids(sub_centroids, target_label)
     assert_array_equal(bisection_kmeans.centroids, np.array([[2], [5], [7.5], [10]]))
 
-    
+
+def test_bisecting_kmeans_update_scores():
+    max_n_clusters = 3
+    bisection_kmeans = BisectingKMeans(max_n_clusters)
+
+    # X = np.array([[1], [2], [3],
+    #               [4], [5], [6],
+    #               [7], [8], [10]])
+    # we choose to split cluster/label 2, because it has he largest variance
+    # sub_X = np.array([[7], [8], [10]])
+    # sub_labels = np.array([0, 0, 1])
+    # target_label_indices = np.array([6, 7, 8])
+
+    target_label = 2
+    bisection_kmeans.scores = np.array([2., 2., 4.])
+    sub_scores = np.array([0.5, 0])
+
+    bisection_kmeans._update_scores(sub_scores, target_label)
+    assert_array_equal(bisection_kmeans.scores, np.array([2, 2, 0.5, 0]))
+
+@pytest.mark.parametrize("scores", [[1, 99, 32.45], [0.77,0.5, 0], [100.99, 34.89, 8000]])
+def test_next_cluster_to_split(scores):
+   bisectingKMeans = BisectingKMeans(max_n_clusters=2)
+   bisectingKMeans.scores = np.array(scores)
+   assert_equal(bisectingKMeans._next_cluster_to_split(), scores.index(max(scores)))

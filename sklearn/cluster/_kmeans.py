@@ -2102,3 +2102,24 @@ class BisectingKMeans():
         """
         self.centroids[target_label] = sub_centroids[0]
         self.centroids = np.append(self.centroids, np.array([sub_centroids[1]]), axis=0)
+
+    def _update_scores(self, sub_scores, target_label):
+        """
+        update the scores based on sub_scores outputted by the KMeans cluster split
+        """
+        self.scores[target_label] = sub_scores[0]
+        self.scores = np.append(self.scores, np.array([sub_scores[1]]), axis=0)
+
+    def _next_cluster_to_split(self):
+        """
+        Returns the next cluster to split based on the scores for each cluster
+        """
+
+        max_score = 0.0
+        cluster = 0
+        for i in range(0, len(self.scores)):
+            if max_score < self.scores[i]:
+                max_score = self.scores[i]
+                cluster = i
+
+        return cluster
