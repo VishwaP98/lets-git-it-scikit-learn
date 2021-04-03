@@ -18,7 +18,6 @@ from ._birch import Birch
 
 __all__ = ['AffinityPropagation',
            'AgglomerativeClustering',
-           'BisectingKMeans',
            'Birch',
            'DBSCAN',
            'OPTICS',

@@ -21,7 +21,7 @@ from sklearn.utils.extmath import row_norms
 from sklearn.metrics import pairwise_distances
 from sklearn.metrics import pairwise_distances_argmin
 from sklearn.metrics.cluster import v_measure_score
-from sklearn.cluster import KMeans, k_means, kmeans_plusplus
+from sklearn.cluster import KMeans, k_means, kmeans_plusplus, BisectingKMeans
 from sklearn.cluster import MiniBatchKMeans
 from sklearn.cluster import BisectingKMeans
 from sklearn.cluster._kmeans import _labels_inertia
@@ -1094,6 +1094,33 @@ def test_kmeans_plusplus_dataorder():
 
     assert_allclose(centers_c, centers_fortran)
 
+
+# -----------BisectingKMeans Unit Tests------------------
+              
+@pytest.mark.parametrize("max_n_clusters", [1, 10])
+def test_predict(max_n_clusters):
+    n_samples = 500
+    n_features = 10
+    X = np.random.rand(n_samples,n_features)
+
+    clf = BisectingKMeans(max_n_clusters)
+
+    clf.fit(X)
+    labels = clf.labels
+
+    # re-predict labels for training set using predict
+    pred = clf.predict(X)
+    assert_array_equal(pred, labels)
+
+    # predict centroid labels (this should pass once fit is implemented)
+    # pred = clf.predict(clf.centroids)
+    # assert_array_equal(pred, np.arange(clf.max_n_clusters))
+
+@pytest.mark.parametrize("max_n_clusters", [1, 10])
+def test_euclidean_distance(max_n_clusters):
+    clf = BisectingKMeans(max_n_clusters)
+    distance = clf._euclidean_distance([1, 0, 1], [0, 1, 1])
+    assert distance == 2**(.5)
 max_n_clusters = 3
 
 @pytest.mark.parametrize("sub_labels,expected_labels", [

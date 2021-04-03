@@ -158,7 +158,6 @@ def _tolerance(X, tol):
         variances = np.var(X, axis=0)
     return np.mean(variances) * tol
 
-
 @_deprecate_positional_args
 def k_means(X, n_clusters, *, sample_weight=None, init='k-means++',
             precompute_distances='deprecated', n_init=10, max_iter=300,
@@ -2026,7 +2025,8 @@ class BisectingKMeans():
         self.max_n_clusters = max_n_clusters
         self.labels = None  # np arrays with the same size as X
         self.centroids = None
-        self.scores = None
+        self.scores = np.zeros(max_n_clusters)
+        pass
 
     def fit(self, X):
         """
@@ -2036,48 +2036,110 @@ class BisectingKMeans():
         # check fitted
         # check type of X
         # init
-        labels = np.zeros(X.shape[0])
+        self.labels = np.zeros(X.shape[0])
+        self.centroids = np.asarray([np.zeros(X.shape[1])])
+        
+        # largestLabel = 0
 
-        for i in range(self.max_n_clusters - 1):
-            kmeans = KMeans(n_clusters=2, init='k-means++')
-            # target_label = self._next_cluster_to_split()
-            target_label = 2
-            # find corresponding points in the target_cluster call sub_X
-            # use labels to create a mask and filter X
+        # for i in range(self.max_n_clusters - 1):
+        #     kmeans = KMeans(n_clusters=2, init='k-means++')
+        #     # target_label = self._next_cluster_to_split()
+        #     target_label = 2
+        #     # find corresponding points in the target_cluster call sub_X
+        #     # use labels to create a mask and filter X
 
-            target_label_indices = np.where(labels == target_label)
+        #     target_label_indices = np.where(labels == target_label)
 
-            # using the target_label_indices get the corresponding X values into sub_X
-            # sub_X = X[target_label_indices]
+        #     # using the target_label_indices get the corresponding X values into sub_X
+        #     # sub_X = X[target_label_indices]
 
-            # kmeans.fit(sub_X)
-            # sub_labels = kmeans.labels_  # np.ndarray with lengh equal to sub_X, labels 0 or 1
-            # score = kmeans.score()
-            # sub_centroids = kmeans.cluster_centers_
+        #     # kmeans.fit(sub_X)
+        #     # sub_labels = kmeans.labels_  # np.ndarray with lengh equal to sub_X, labels 0 or 1
+        #     # score = kmeans.score()
+        #     # sub_centroids = kmeans.cluster_centers_
 
-            # end of this loop[]
+        #     # end of this loop[]
 
-            # kmeans = KMeans(n_clusters=3, random_state=0).fit(X)
-            # print(kmeans.labels_)
-            # print(kmeans.cluster_centers_)
+        #     # kmeans = KMeans(n_clusters=3, random_state=0).fit(X)
+        #     # print(kmeans.labels_)
+        #     # print(kmeans.cluster_centers_)
 
-            # update X with new labels
-            # [0, 1] -> map elements with 0 label to targetLabel and
-            # elements with 1 label to largestLabel+1
-            # update labels using sub_labels
+        #     # update X with new labels
+        #     # [0, 1] -> map elements with 0 label to targetLabel and
+        #     # elements with 1 label to largestLabel+1
+        #     # update labels using sub_labels
 
-            # self._update_labels(sub_labels, target_label_indices, i + 1)
-            # self._update_centroids(sub_centroids, target_label)
-            # self._update_scores(sub_scores, target_label)
+        #     # self._update_labels(sub_labels, target_label_indices, target_label)
+        #     # self._update_centroids(sub_centroids, target_label)
+        #     # self._update_scores(sub_scores, target_label)
 
-            # update self.centroids self.scores with new labels and sub_scores
+        #     # update self.centroids self.scores with new labels and sub_scores
 
-            # if early_stopping:
-            #     # check stopping criteria
-            #     break
+        #     # if early_stopping:
+        #     #     # check stopping criteria
+        #     #     break
 
         return self
 
+
+    def _euclidean_distance(self, x1, x2):
+        '''Compute the euclidean distance between points x1 and x2
+
+        Parameters
+        ----------
+        x1 : n-dimensional ndarray of integers
+        x2 : n-dimensional ndarray of integers
+
+        Returns
+        -------
+        distance : non-negative float
+
+        >>> _euclidean_distance([1, 0, 1], [0, 1, 1])
+            sqrt(2)
+        '''
+        distance = 0
+        for a, b in zip(x1, x2):
+            distance += (a - b)**2
+        return distance**0.5
+        
+
+    def predict(self, X):
+        """Predict the closest cluster each sample in X belongs to.
+
+        Parameters
+        ----------
+        X : {array-like, sparse matrix} of shape (n_samples, n_features)
+            New data to predict.
+
+        Returns
+        -------
+        predictions : ndarray of shape (n_samples,)
+
+        """
+        # TODO check is fitted
+        # check_is_fitted(self)
+
+        predictions = []
+
+        # for each point in X, check which centroid is closest
+        for x in X:
+            # inertia = sum of squared distance to cluster centroid
+            min_cost = float('inf')
+            label = 0
+
+            for i in range(len(self.centroids)):
+                centroid = self.centroids[i]
+                # centroid = [centroid] if isinstance(centroid, float) else centroid
+
+                cost = self._euclidean_distance(x, centroid)
+
+                if cost < min_cost:
+                    min_cost = cost
+                    label = i
+            
+            predictions.append(label)
+
+        return predictions
     def _update_labels(self, sub_labels, target_label_indices, new_label):
         """
         Update the labels in X based on sub_labels outputted by the KMeans cluster split
@@ -2123,3 +2185,4 @@ class BisectingKMeans():
                 cluster = i
 
         return cluster
+
