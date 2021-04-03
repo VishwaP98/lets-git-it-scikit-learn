@@ -2037,7 +2037,7 @@ class BisectingKMeans():
         # check type of X
         # init
         self.labels = np.zeros(X.shape[0])
-        self.centroids = np.asarray([[0]])
+        self.centroids = np.asarray(np.zeros(X.shape[0]))
         
         # largestLabel = 0
 
