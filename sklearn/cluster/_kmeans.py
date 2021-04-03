@@ -2037,7 +2037,6 @@ class BisectingKMeans():
         # check type of X
         # init
         labels = np.zeros(X.shape[0])
-        largestLabel = 0
 
         for i in range(self.max_n_clusters - 1):
             kmeans = KMeans(n_clusters=2, init='k-means++')
@@ -2067,7 +2066,7 @@ class BisectingKMeans():
             # elements with 1 label to largestLabel+1
             # update labels using sub_labels
 
-            # self._update_labels(sub_labels, target_label_indices, target_label)
+            # self._update_labels(sub_labels, target_label_indices, i + 1)
             # self._update_centroids(sub_centroids, target_label)
             # self._update_scores(sub_scores, target_label)
 
@@ -2079,7 +2078,7 @@ class BisectingKMeans():
 
         return self
 
-    def _update_labels(self, sub_labels, target_label_indices, target_label):
+    def _update_labels(self, sub_labels, target_label_indices, new_label):
         """
         Update the labels in X based on sub_labels outputted by the KMeans cluster split
 
@@ -2087,13 +2086,11 @@ class BisectingKMeans():
         target_label_indices: contains indices within X that have the label value as target_label
 
         """
-        # sub_labels=[0,0,1]-> 1 -> target_label_indices
         # map the sub_labels to actual indices in the target_label_indices
         one_label_indices = target_label_indices[np.where(sub_labels == 1)]
 
         # set value target_label + 1 for indices where sub_labels == 1
-
-        self.labels[one_label_indices] = target_label + 1
+        self.labels[one_label_indices] = new_label
 
     def _update_centroids(self, sub_centroids, target_label):
         """
