@@ -158,7 +158,6 @@ def _tolerance(X, tol):
         variances = np.var(X, axis=0)
     return np.mean(variances) * tol
 
-
 @_deprecate_positional_args
 def k_means(X, n_clusters, *, sample_weight=None, init='k-means++',
             precompute_distances='deprecated', n_init=10, max_iter=300,
@@ -2018,3 +2017,178 @@ def kmeans_plusplus(X, n_clusters, *, x_squared_norms=None,
                                         random_state, n_local_trials)
 
     return centers, indices
+
+
+class BisectingKMeans(ClusterMixin, BaseEstimator):
+
+    @_deprecate_positional_args
+    def __init__(self, max_n_clusters, init="k-means++"):
+        self.max_n_clusters = max_n_clusters
+        self.init = init
+
+    def _check_params(self, X):
+
+        # init
+        if not (hasattr(self.init, '__array__') or callable(self.init)
+                or (isinstance(self.init, str)
+                    and self.init in ["k-means++", "random"])):
+            raise ValueError(
+                f"init should be either 'k-means++', 'random', a ndarray or a "
+                f"callable, got '{self.init}' instead.")
+
+        # max_n_clusters
+        if X.shape[0] < self.max_n_clusters:
+            raise ValueError(f"n_samples={X.shape[0]} should be >= "
+                             f"max_n_clusters={self.max_n_clusters}.")
+
+    def fit(self, X, y=None):
+        """
+        Compute BisectingKMeans Clustering
+        X : {array-like, sparse matrix} of shape (n_samples, n_features)
+            Training instances to cluster.
+
+        y : Ignored
+            Not used, present here for API consistency by convention.
+        Returns
+        -------
+        self
+            Fitted estimator.
+        """
+        self._validate_data(X, reset=True)
+        self._check_params(X)
+
+        self.labels_ = np.zeros(X.shape[0])
+        self.centroids = np.asarray([np.zeros(X.shape[1])])
+        self.scores = np.zeros(self.max_n_clusters)
+
+        for i in range(self.max_n_clusters - 1):
+            kmeans = KMeans(n_clusters=2, init=self.init)
+            target_label = self._next_cluster_to_split()
+
+            target_label_indices = np.where(self.labels_ == target_label)[0]
+            sub_X = X[target_label_indices]
+
+            kmeans.fit(sub_X)
+            sub_labels = kmeans.labels_
+            sub_centroids = kmeans.cluster_centers_
+
+            # update self.labels_ with new labels
+            # [0, 1] -> keep elements with label 0 as its current label and update elements with 1 label to i+1
+            self._update_labels(sub_labels, target_label_indices, i + 1)
+            self._update_centroids(sub_centroids, target_label)
+
+            self.set_cluster_cost(target_label, X)
+            self.set_cluster_cost(i + 1, X)
+        return self
+
+    def _euclidean_distance(self, x1, x2):
+        """Compute the euclidean distance between points x1 and x2
+
+        Parameters
+        ----------
+        x1 : n-dimensional ndarray of integers
+        x2 : n-dimensional ndarray of integers
+
+        Returns
+        -------
+        distance : non-negative float
+
+        >>> _euclidean_distance([1, 0, 1], [0, 1, 1])
+            sqrt(2)
+        """
+        distance = 0
+        for a, b in zip(x1, x2):
+            distance += (a - b)**2
+        return distance**0.5
+
+    def _check_test_data(self, X, ):
+        X = self._validate_data(X, reset=False)
+        return X
+
+    def predict(self, X):
+        """Predict the closest cluster each sample in X belongs to.
+
+        Parameters
+        ----------
+        X : {array-like, sparse matrix} of shape (n_samples, n_features)
+            New data to predict.
+
+        Returns
+        -------
+        predictions : ndarray of shape (n_samples,)
+
+        """
+        check_is_fitted(self)
+        self._check_test_data(X)
+
+        predictions = []
+
+        # for each point in X, check which centroid is closest
+        for x in X:
+            # inertia = sum of squared distance to cluster centroid
+            min_cost = float('inf')
+            label = 0
+
+            for i in range(len(self.centroids)):
+                centroid = self.centroids[i]
+                # centroid = [centroid] if isinstance(centroid, float) else centroid
+
+                cost = self._euclidean_distance(x, centroid)
+
+                if cost < min_cost:
+                    min_cost = cost
+                    label = i
+            
+            predictions.append(label)
+        return predictions
+
+    def _update_labels(self, sub_labels, target_label_indices, new_label):
+        """
+        Update the labels in X based on sub_labels outputted by the KMeans cluster split
+
+        sub_labels: contains 0 or 1 for sub_X inputted into the KMeans call
+        target_label_indices: contains indices within X that have the label value as target_label
+
+        """
+        # map the sub_labels to actual indices in the target_label_indices
+        one_label_indices = target_label_indices[np.where(sub_labels == 1)]
+        self.labels_[one_label_indices] = new_label
+
+    def _update_centroids(self, sub_centroids, target_label):
+        """
+        Update the centroids based on sub_centroids outputted by the KMeans cluster split
+
+        sub_centroids: contains cluster locations for sub_X inputted into the KMeans call
+        target_label_indices: contains indices within X that have the label value as target_label
+
+        """
+        self.centroids[target_label] = sub_centroids[0]
+        self.centroids = np.append(self.centroids, np.array([sub_centroids[1]]), axis=0)
+
+    def _next_cluster_to_split(self):
+        """
+        Returns the next cluster to split based on the scores for each cluster
+        """
+
+        max_score = 0.0
+        cluster = 0
+        for i in range(0, len(self.scores)):
+            if max_score < self.scores[i]:
+                max_score = self.scores[i]
+                cluster = i
+
+        return cluster
+
+    def set_cluster_cost(self, cluster, X):
+        """
+        Set the cluster cost for the cluster with label value
+        """
+        # check what they did in kmeans, the cost function should have been implemented
+        # you only need to update the self.scores here
+        center = self.centroids[cluster]
+        cost = 0.0
+
+        for i in range(len(self.labels_)):
+            if self.labels_[i] == cluster:
+                cost += self._euclidean_distance(X[i], center)
+        self.scores[cluster] = cost

@@ -12,16 +12,19 @@ from sklearn.utils._testing import assert_array_equal
 from sklearn.utils._testing import assert_array_almost_equal
 from sklearn.utils._testing import assert_allclose
 from sklearn.utils._testing import assert_almost_equal
+from numpy.testing import assert_equal
 from sklearn.utils.fixes import _astype_copy_false
 from sklearn.base import clone
 from sklearn.exceptions import ConvergenceWarning
+from sklearn.exceptions import NotFittedError
 
 from sklearn.utils.extmath import row_norms
 from sklearn.metrics import pairwise_distances
 from sklearn.metrics import pairwise_distances_argmin
 from sklearn.metrics.cluster import v_measure_score
-from sklearn.cluster import KMeans, k_means, kmeans_plusplus
+from sklearn.cluster import KMeans, k_means, kmeans_plusplus, BisectingKMeans
 from sklearn.cluster import MiniBatchKMeans
+from sklearn.cluster import BisectingKMeans
 from sklearn.cluster._kmeans import _labels_inertia
 from sklearn.cluster._kmeans import _mini_batch_step
 from sklearn.cluster._k_means_fast import _relocate_empty_clusters_dense
@@ -1091,3 +1094,87 @@ def test_kmeans_plusplus_dataorder():
     centers_fortran, _ = kmeans_plusplus(X_fortran, n_clusters, random_state=0)
 
     assert_allclose(centers_c, centers_fortran)
+
+
+# -----------BisectingKMeans Unit Tests------------------
+
+max_n_clusters = 3
+
+
+@pytest.mark.parametrize("max_n_clusters", [1, 10])
+def test_predict(max_n_clusters):
+    X, _ = make_blobs(n_samples=500, n_features=10, centers=max_n_clusters, random_state=0)
+    clf = BisectingKMeans(max_n_clusters)
+    clf.fit(X)
+    labels = clf.labels_
+
+    # re-predict labels for training set using predict
+    pred = clf.predict(X)
+    assert_array_equal(pred, labels)
+
+    # predict centroid labels (this should pass once fit is implemented)
+    pred = clf.predict(clf.centroids)
+    assert_array_equal(pred, np.arange(clf.max_n_clusters))
+
+
+@pytest.mark.parametrize("max_n_clusters", [1, 10])
+def test_euclidean_distance(max_n_clusters):
+    clf = BisectingKMeans(max_n_clusters)
+    distance = clf._euclidean_distance([1, 0, 1], [0, 1, 1])
+    assert distance == 2**(.5)
+
+@pytest.mark.parametrize("sub_labels,expected_labels", [
+    (np.array([0, 0, 1]), np.array([0, 0, 0, 1, 1, 1, 2, 2, 3])), 
+    (np.array([1, 0, 1]), np.array([0, 0, 0, 1, 1, 1, 3, 2, 3]))])
+def test_bisecting_kmeans_update_labels(sub_labels, expected_labels):
+
+    bisecting_kmeans = BisectingKMeans(max_n_clusters)
+
+    bisecting_kmeans.labels_ = np.array([0, 0, 0, 1, 1, 1, 2, 2, 2])
+    new_label = 3
+    target_label_indices = np.array([6, 7, 8])
+    bisecting_kmeans._update_labels(sub_labels, target_label_indices, new_label)
+    assert_array_equal(bisecting_kmeans.labels_, expected_labels)
+
+
+def test_bisecting_kmeans_update_centroids():
+    bisection_kmeans = BisectingKMeans(max_n_clusters)
+
+    target_label = 2
+    bisection_kmeans.centroids = np.array([[2], [5], [8.33]])
+    sub_centroids = np.array([[7.5], [10]])
+
+    bisection_kmeans._update_centroids(sub_centroids, target_label)
+    assert_array_equal(bisection_kmeans.centroids, np.array([[2], [5], [7.5], [10]]))
+
+
+@pytest.mark.parametrize("scores", [[1, 99, 32.45], [0.77,0.5, 0], [100.99, 34.89, 8000]])
+def test_next_cluster_to_split(scores):
+    bisectingKMeans = BisectingKMeans(max_n_clusters=2)
+    bisectingKMeans.scores = np.array(scores)
+    assert_equal(bisectingKMeans._next_cluster_to_split(), scores.index(max(scores)))
+
+
+def test_predict_not_fitted():
+    bkmeans = BisectingKMeans(max_n_clusters=2)
+    X = np.zeros([3])
+    with pytest.raises(NotFittedError):
+        bkmeans.predict(X)
+
+
+def test_max_n_clusters_greater_than_input():
+    bkmeans = BisectingKMeans(max_n_clusters=10)
+    X = np.zeros([3])
+    with pytest.raises(ValueError):
+        bkmeans.fit(X)
+
+
+def test_predict_diff_dimention_data():
+    bkmeans = BisectingKMeans(max_n_clusters=3)
+    X = np.array([[1], [2], [3],
+                  [4], [5], [6],
+                  [7], [8], [10]])
+
+    bkmeans.fit(X)
+    with pytest.raises(ValueError):
+        bkmeans.predict(np.array([[1,2]]))
