@@ -16,6 +16,7 @@ from numpy.testing import assert_equal
 from sklearn.utils.fixes import _astype_copy_false
 from sklearn.base import clone
 from sklearn.exceptions import ConvergenceWarning
+from sklearn.exceptions import NotFittedError
 
 from sklearn.utils.extmath import row_norms
 from sklearn.metrics import pairwise_distances
@@ -1096,32 +1097,31 @@ def test_kmeans_plusplus_dataorder():
 
 
 # -----------BisectingKMeans Unit Tests------------------
-              
+
+max_n_clusters = 3
+
+
 @pytest.mark.parametrize("max_n_clusters", [1, 10])
 def test_predict(max_n_clusters):
-    n_samples = 500
-    n_features = 10
-    X = np.random.rand(n_samples,n_features)
-
+    X, _ = make_blobs(n_samples=500, n_features=10, centers=max_n_clusters, random_state=0)
     clf = BisectingKMeans(max_n_clusters)
-
     clf.fit(X)
-    labels = clf.labels
+    labels = clf.labels_
 
     # re-predict labels for training set using predict
     pred = clf.predict(X)
     assert_array_equal(pred, labels)
 
     # predict centroid labels (this should pass once fit is implemented)
-    # pred = clf.predict(clf.centroids)
-    # assert_array_equal(pred, np.arange(clf.max_n_clusters))
+    pred = clf.predict(clf.centroids)
+    assert_array_equal(pred, np.arange(clf.max_n_clusters))
+
 
 @pytest.mark.parametrize("max_n_clusters", [1, 10])
 def test_euclidean_distance(max_n_clusters):
     clf = BisectingKMeans(max_n_clusters)
     distance = clf._euclidean_distance([1, 0, 1], [0, 1, 1])
     assert distance == 2**(.5)
-max_n_clusters = 3
 
 @pytest.mark.parametrize("sub_labels,expected_labels", [
     (np.array([0, 0, 1]), np.array([0, 0, 0, 1, 1, 1, 2, 2, 3])), 
@@ -1129,28 +1129,16 @@ max_n_clusters = 3
 def test_bisecting_kmeans_update_labels(sub_labels, expected_labels):
 
     bisecting_kmeans = BisectingKMeans(max_n_clusters)
-    
-    # X = np.array([[1], [2], [3], [4], [5], [6], [7], [8], [10]])
-    bisecting_kmeans.labels = np.array([0, 0, 0, 1, 1, 1, 2, 2, 2])
-    target_label = 2
+
+    bisecting_kmeans.labels_ = np.array([0, 0, 0, 1, 1, 1, 2, 2, 2])
     new_label = 3
-    target_label_indices = np.array([6,7,8])
-
+    target_label_indices = np.array([6, 7, 8])
     bisecting_kmeans._update_labels(sub_labels, target_label_indices, new_label)
+    assert_array_equal(bisecting_kmeans.labels_, expected_labels)
 
-    assert_array_equal(bisecting_kmeans.labels, expected_labels)
 
 def test_bisecting_kmeans_update_centroids():
     bisection_kmeans = BisectingKMeans(max_n_clusters)
-
-    # X = np.array([[1], [2], [3],
-    #               [4], [5], [6],
-    #               [7], [8], [10]])
-
-    # we choose to split cluster/label 2, because it has he largest variance
-    # sub_X = np.array([[7], [8], [10]])
-    # sub_labels = np.array([0, 0, 1])
-    # target_label_indices = np.array([6, 7, 8])
 
     target_label = 2
     bisection_kmeans.centroids = np.array([[2], [5], [8.33]])
@@ -1160,29 +1148,33 @@ def test_bisecting_kmeans_update_centroids():
     assert_array_equal(bisection_kmeans.centroids, np.array([[2], [5], [7.5], [10]]))
 
 
-def test_bisecting_kmeans_update_scores():
-    max_n_clusters = 3
-    bisection_kmeans = BisectingKMeans(max_n_clusters)
-
-    # X = np.array([[1], [2], [3],
-    #               [4], [5], [6],
-    #               [7], [8], [10]])
-    # we choose to split cluster/label 2, because it has he largest variance
-    # sub_X = np.array([[7], [8], [10]])
-    # sub_labels = np.array([0, 0, 1])
-    # target_label_indices = np.array([6, 7, 8])
-
-    target_label = 2
-    bisection_kmeans.scores = np.array([2., 2., 4.])
-    sub_scores = np.array([0.5, 0])
-
-    bisection_kmeans._update_scores(sub_scores, target_label)
-    assert_array_equal(bisection_kmeans.scores, np.array([2, 2, 0.5, 0]))
-
-
 @pytest.mark.parametrize("scores", [[1, 99, 32.45], [0.77,0.5, 0], [100.99, 34.89, 8000]])
 def test_next_cluster_to_split(scores):
     bisectingKMeans = BisectingKMeans(max_n_clusters=2)
     bisectingKMeans.scores = np.array(scores)
     assert_equal(bisectingKMeans._next_cluster_to_split(), scores.index(max(scores)))
 
+
+def test_predict_not_fitted():
+    bkmeans = BisectingKMeans(max_n_clusters=2)
+    X = np.zeros([3])
+    with pytest.raises(NotFittedError):
+        bkmeans.predict(X)
+
+
+def test_max_n_clusters_greater_than_input():
+    bkmeans = BisectingKMeans(max_n_clusters=10)
+    X = np.zeros([3])
+    with pytest.raises(ValueError):
+        bkmeans.fit(X)
+
+
+def test_predict_diff_dimention_data():
+    bkmeans = BisectingKMeans(max_n_clusters=3)
+    X = np.array([[1], [2], [3],
+                  [4], [5], [6],
+                  [7], [8], [10]])
+
+    bkmeans.fit(X)
+    with pytest.raises(ValueError):
+        bkmeans.predict(np.array([[1,2]]))
