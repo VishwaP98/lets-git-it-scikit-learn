@@ -2187,8 +2187,9 @@ class BisectingKMeans(ClusterMixin, BaseEstimator):
         # you only need to update the self.scores here
         center = self.centroids[cluster]
         cost = 0.0
+        target_label_indices = np.where(self.labels_ == cluster)[0]
+        sub_X = X[target_label_indices]
 
-        for i in range(len(self.labels_)):
-            if self.labels_[i] == cluster:
-                cost += self._euclidean_distance(X[i], center)
+        for x in sub_X:
+            cost += self._euclidean_distance(x, center)
         self.scores[cluster] = cost
